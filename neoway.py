@@ -37,6 +37,7 @@ class FAIXASCEP():
 
 		parametro = {
 		'uf': uf,
+		'qrdrow': 10000
 		}
 
 		request = requests.post(self.url_buscafaixas, parametro)
