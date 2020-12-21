@@ -30,5 +30,8 @@ Apesar de reconhecer que o parâmetro 'qtdrow' tem a capacidade de recuperar tod
   - **
   - (vazio)
 
+## Solução
+
+No parâmetro 'qtdrow', utilizou-se um número maior para abranger todos as regiões. Observa-se que não se obteve maleficio em utilizar tal abordagem, porém um novo valor esta sendo estudado para que se possa recuperar todas as informações, sem a necessidade da abordagem solução deste código. 
 
 
