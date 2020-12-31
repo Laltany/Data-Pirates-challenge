@@ -4,74 +4,11 @@ import json
 import sys
 import uuid
 
-class FAIXASCEP():
 
-	def __init__(self, url_buscaufs, url_buscafaixas):
-		self.url_buscaufs = url_buscaufs
-		self.url_buscafaixas = url_buscafaixas
-		self.ufs = []
-		self.faixas = []
+class content():
 
-	def BuscaUFs(self):
-
-		'''
-			Realiza a captura das UFs na página de busca de faixas de cep
-		'''
-
-		request = requests.get(self.url_buscaufs)
-		
-		soup = BeautifulSoup(request.text, 'html.parser')
-
-		select = soup.find('select')
-
-		_ufs = list(select.stripped_strings)
-
-		self.ufs = _ufs
-
-	def BuscaInformacoes(self, uf):
-
-		'''
-			Realiza a busca das informações referentes as faixas de cep de determinadas UFs. 
-			As informações mantidas são: id, uf da localidade, faixa de cep e tipo de faixa. 
-		'''
-
-		parametro = {
-		'uf': uf,
-		}
-
-		request = requests.post(self.url_buscafaixas, parametro)
-
-		soup = BeautifulSoup(request.text, 'html.parser')
-
-		tables = soup.findAll("table", {'class':'tmptabela'})
-
-		list_ = tables[1].findAll("tr")
-
-		list_aux = []
-
-
-		for item in list_[2:]:
-			aux = item.stripped_strings
-			aux = list(aux)
-			_id = str(uuid.uuid4())
-			list_aux.append({'id': _id, 'uf':uf, 'localidade': aux[0], 'faixa de cep': aux[1], 'tipo de faixa': aux[3]})
-
-
-		return list_aux
-
-	def remove_duplicados(self, lista_localidades):
-		'''
-			Tem como objetivo remover todas as duplicatas presentes na lista das informações 
-		'''
-		aux = []
-		for localidade in lista_localidades:
-			for faixa_cep in localidade:	
-				if faixa_cep not in aux:
-					aux.append(faixa_cep)
-		return aux
-
-	def salvar(self, lista):
-		self.faixas = lista
+	def __init__(self, faixas_de_cep):
+		self.faixas = faixas_de_cep
 
 	def SalvarJsonl(self):
 		with open("data.jsonl", 'w', encoding='utf-8') as f:
@@ -79,7 +16,86 @@ class FAIXASCEP():
 	        	f.write(json.dumps(informação, ensure_ascii=False) + "\n")
 			
 
-def TransformaArgs(arg):
+def getUFs(url):
+
+	'''
+		Realiza a captura das UFs na página de busca de faixas de cep
+	'''
+
+	request = requests.get(url)
+	
+	soup = BeautifulSoup(request.text, 'html.parser')
+
+	select = soup.find('select')
+
+	ufs = list(select.stripped_strings)
+
+	return ufs
+
+
+def getPage(uf, url):
+
+	'''
+		Realiza a busca das informações referentes as faixas de cep de determinadas UFs. 
+		As informações mantidas são: id, uf da localidade, faixa de cep e tipo de faixa. 
+	'''
+
+	'''Localidade: **
+		Bairro: 
+		qtdrow: 50
+		pagini: 51
+		pagfim: 100'''
+
+	parametro = {
+	'uf': uf,
+	'qtdrow': 1000
+	}
+
+	request = requests.post(url, parametro)
+
+	page = BeautifulSoup(request.text, 'html.parser')
+
+	return page
+
+
+def remove_Infosduplicadas(InfofaixasCEP):
+	'''
+		Tem como objetivo remover todas as duplicatas presentes na lista das informações 
+	'''
+	sem_duplicatas = []
+	for localidade in InfofaixasCEP:
+		if localidade not in sem_duplicatas:
+			sem_duplicatas.append(localidade)
+
+	return sem_duplicatas
+
+
+def Crawler(args, ufs, url):
+
+	lista_InfofaixasCEP = []
+
+	for uf in ufs[:args]:
+
+		page = getPage(uf, url)
+
+		tables = page.findAll("table", {'class':'tmptabela'})
+
+		list_ = tables[1].findAll("tr")
+
+		for item in list_[2:]:
+			aux = item.stripped_strings
+			aux = list(aux)
+			_id = str(uuid.uuid4())
+			lista_InfofaixasCEP.append({'id': _id, 'uf':uf, 'localidade': aux[0], 'faixa de cep': aux[1], 'tipo de faixa': aux[3]})
+
+
+	InfofaixasCEP = remove_Infosduplicadas(lista_InfofaixasCEP)
+
+	return content(InfofaixasCEP)
+
+
+
+def ConvertToInt(arg):
 	try:
 	    arg_ = int(arg)
 	    return arg_
@@ -88,39 +104,23 @@ def TransformaArgs(arg):
 	    exit()
 
 
-def ValidaArg(arg):
-    if arg >= 2 and arg <= 27:
-    	return True
-    else:
-    	return False
-
-
-## argumento passado pelo usuário
+### argumento passado pelo usuário, referente a quantidade de consultas que deve ser realizada
 args = sys.argv[1]
-args = TransformaArgs(args)
-
-##variaveis auxiliares
-lista_localidades = []
-sem_duplicatas = [] 
+args = ConvertToInt(args)
 
 #parametros para capturar as ufs e realizar a busca
-url_buscaufs = "http://www.buscacep.correios.com.br/sistemas/buscacep/buscaFaixaCep.cfm"
+url_ufs_disponiveis = "http://www.buscacep.correios.com.br/sistemas/buscacep/buscaFaixaCep.cfm"
 url_buscafaixascep = "http://www.buscacep.correios.com.br/sistemas/buscacep/resultadoBuscaFaixaCEP.cfm"
 
 #criação e manipulação do objeto
 
-faixas_de_cep = FAIXASCEP(url_buscaufs, url_buscafaixascep )
+ufs = getUFs(url_ufs_disponiveis)
 
-faixas_de_cep.BuscaUFs()
-
-if ValidaArg(args):
-	for uf in faixas_de_cep.ufs[:args]:
-		lista_localidades.append(faixas_de_cep.BuscaInformacoes(uf))
-	
-	sem_duplicatas = faixas_de_cep.remove_duplicados(lista_localidades)
-	faixas_de_cep.salvar(sem_duplicatas)
-	faixas_de_cep.SalvarJsonl()	
-
+if args >= 2 and args <= 27:
+	content = Crawler(args, ufs, url_buscafaixascep)	
+	content.SalvarJsonl()	
 else:
 	print("Você deve inserir um valor entre 2 e 27.")
+
+
 
