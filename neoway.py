@@ -33,14 +33,7 @@ def getUFs(url):
 	return ufs
 
 
-<<<<<<< HEAD
 def getPage(uf, url):
-=======
-		parametro = {
-		'uf': uf,
-		'qrdrow': 1000
-		}
->>>>>>> 5c73178d99dc1c4c255167de2a17921e8efc3d7b
 
 	'''
 		Realiza a busca das informações referentes as faixas de cep de determinadas UFs. 
